@@ -1,6 +1,25 @@
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 /**
  * Created by Ricardo on 30/8/2018.
  */
 public class Main {
-    //Instancia thread pool, variables compartidas y pone a los hilos a correr.
+
+    public static void main(String[] args) {
+        //Instancia thread pool, variables compartidas y pone a los hilos a correr.
+
+        //newCachedThreadPool crea, destruye y reusa hilos conforme sea necesario.
+        ExecutorService threadPool = Executors.newCachedThreadPool();
+
+        URLFrontierAdmin urlFrontierAdmin = new URLFrontierAdmin();
+
+        while (true) {
+            synchronized (urlFrontierAdmin) {
+                String url = urlFrontierAdmin.getNextURL();
+                if (url != "")
+                    threadPool.submit(new Crawler(url, urlFrontierAdmin));
+            }
+        }
+    }
 }

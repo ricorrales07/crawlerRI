@@ -3,4 +3,7 @@
  */
 public class URLFrontierAdmin {
 
+    public String getNextURL() {
+        return "";
+    }
 }
