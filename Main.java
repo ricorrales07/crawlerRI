@@ -3,6 +3,7 @@ import java.util.concurrent.Executors;
 
 /**
  * Created by Ricardo on 30/8/2018.
+ * <>
  */
 public class Main {
 
@@ -12,7 +13,11 @@ public class Main {
         //newCachedThreadPool crea, destruye y reusa hilos conforme sea necesario.
         ExecutorService threadPool = Executors.newCachedThreadPool();
 
-        URLFrontierAdmin urlFrontierAdmin = new URLFrontierAdmin();
+        int F = 0, B = 0;
+
+        // TODO: Pedir F y B?
+
+        URLFrontierAdmin urlFrontierAdmin = new URLFrontierAdmin(F, B);
 
         while (true) {
             synchronized (urlFrontierAdmin) {
