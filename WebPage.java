@@ -53,6 +53,7 @@ public class WebPage {
     }
 
     // Privada por default. Aún no sé si se necesita en otra parte.
+    // No estoy tomando en cuenta frecuencia de actualización. No estoy muy seguro de cómo hacerlo.
     private void updateRanking() {
         double sum = 0;
         for (WebPage p : incomingLinks) {

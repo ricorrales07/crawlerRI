@@ -18,4 +18,15 @@ public class URLFrontierAdmin {
     public String getNextURL() {
         return "";
     }
+
+    private int getPriority(WebPage p) {
+        double ranking = p.getRanking();
+        int priority = (int) (ranking * F);
+
+        return priority;
+    }
+
+    public void addPage(WebPage p) {
+        frontQueues[getPriority(p)].add(p);
+    }
 }
