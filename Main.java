@@ -14,16 +14,18 @@ public class Main {
         ExecutorService threadPool = Executors.newCachedThreadPool();
 
         int F = 0, B = 0;
+        String initialUrlsFile = "";
 
         // TODO: Pedir F y B?
+        // TODO: Pedir archivo de URLs iniciales.
 
-        URLFrontierAdmin urlFrontierAdmin = new URLFrontierAdmin(F, B);
+        URLFrontierAdmin urlFrontierAdmin = new URLFrontierAdmin(F, B, initialUrlsFile);
 
         while (true) {
             synchronized (urlFrontierAdmin) {
-                String url = urlFrontierAdmin.getNextURL();
-                if (url != "")
-                    threadPool.submit(new Crawler(url, urlFrontierAdmin));
+                WebPage page = urlFrontierAdmin.getNextPage();
+                if (page != null)
+                    threadPool.submit(new Crawler(page, urlFrontierAdmin));
             }
         }
     }

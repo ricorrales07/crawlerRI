@@ -1,7 +1,10 @@
 import java.net.InetAddress;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayDeque;
+import java.util.Comparator;
 import java.util.PriorityQueue;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -9,12 +12,24 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class URLFrontierAdmin {
 
+    private class PriorityHeapItem {
+        public Instant nextContact;
+        public InetAddress ip;
+    }
+
+    private class PriorityHeapItemComparator implements Comparator<PriorityHeapItem> {
+        public int compare(PriorityHeapItem a, PriorityHeapItem b) {
+            return a.nextContact.compareTo(b.nextContact);
+        }
+    }
+
     private ArrayDeque<WebPage>[] frontQueues, backQueues;
     private int F, B;
     private ConcurrentHashMap<InetAddress, ArrayDeque<WebPage>> hostTable;
-    //private PriorityQueue<InetAddress> priorityHeap;
+    private PriorityQueue<PriorityHeapItem> priorityHeap;
+    private Random randomGenerator;
 
-    public URLFrontierAdmin(int F, int B) {
+    public URLFrontierAdmin(int F, int B, String initialUrlsFile) {
         this.F = F;
         this.B = B;
         frontQueues = new ArrayDeque[F];
@@ -24,15 +39,68 @@ public class URLFrontierAdmin {
         for (int i = 0; i < B; i++)
             backQueues[i] = new ArrayDeque<WebPage>();
         hostTable = new ConcurrentHashMap<InetAddress, ArrayDeque<WebPage>>();
+        priorityHeap = new PriorityQueue<>(10000,
+                new PriorityHeapItemComparator());
+        randomGenerator = new Random(Instant.now().getEpochSecond());
+
+        loadQueues(initialUrlsFile);
     }
 
-    public String getNextURL() {
-        return "";
+    private void loadQueues(String initialUrlsFile) {}
+
+    public WebPage getNextPage() {
+        PriorityHeapItem item = priorityHeap.poll();
+        if (item.nextContact.compareTo(Instant.now()) < 0) {
+            long milliseconds = Instant.now().until(item.nextContact, ChronoUnit.MILLIS);
+            try {
+                Thread.sleep(milliseconds);
+            }
+            catch (InterruptedException e) {
+                // No debería ocurrir.
+            }
+        }
+
+        ArrayDeque<WebPage> backQueue = hostTable.get(item.ip);
+        WebPage nextPage = backQueue.pop();
+
+        refillBackQueues(backQueue);
+
+        return nextPage;
+    }
+
+    private void refillBackQueues(ArrayDeque<WebPage> backQueue) {
+        while (backQueue.isEmpty()) {
+            ArrayDeque<WebPage> frontQueue = frontQueues[pickRandomFrontQueue()];
+            WebPage p = frontQueue.pop();
+
+            // TODO: No implementado.
+        }
+    }
+
+    private int pickRandomFrontQueue() {
+        int totalPossibilities = (F * (F + 1)) / 2;
+        int f = randomGenerator.nextInt(totalPossibilities);
+
+        // Si 0 <= f < F, se escoge la cola 0 (F posibilidades).
+        // Si F <= f < 2F-1, se escoge la cola 1 (F-1 posibilidades).
+        // Si 2F-1 <= f < 3F-3, se escoge la cola 2 (F-2 posibilidades).
+        // ...
+        // Si (F * (F + 1)) / 2 - 1 <= f < (F * (F + 1)) / 2, se escoge la cola F (1 posibilidad).
+        for (int i = 0; i < F; i++){
+            int start = i * F - ((i - 1) * i) / 2;
+            int end = (i + 1) * F - (i * (i + 1)) / 2;
+            if (f >= start && f < end) {
+                return i;
+            }
+        }
+
+        // No debería llegar aquí.
+        return 0;
     }
 
     private int getPriority(WebPage p) {
         double ranking = p.getRanking();
-        int priority = (int) (ranking * F);
+        int priority = (int) ((1 - ranking) * F);
 
         return priority;
     }

@@ -2,12 +2,12 @@
  * Created by Ricardo on 5/9/2018.
  */
 public class Crawler implements Runnable {
-    private String url;
+    private WebPage page;
     private URLFrontierAdmin urlFrontierAdmin;
 
-    public Crawler(String url, URLFrontierAdmin urlFrontierAdmin)
+    public Crawler(WebPage page, URLFrontierAdmin urlFrontierAdmin)
     {
-        this.url = url;
+        this.page = page;
         this.urlFrontierAdmin = urlFrontierAdmin;
     }
 
