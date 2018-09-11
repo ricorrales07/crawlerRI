@@ -1,4 +1,5 @@
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayDeque;
@@ -15,6 +16,18 @@ public class URLFrontierAdmin {
     private class PriorityHeapItem {
         public Instant nextContact;
         public InetAddress ip;
+
+        public PriorityHeapItem(Instant nextContact, InetAddress ip) {
+            this.nextContact = nextContact;
+            this.ip = ip;
+        }
+
+        public boolean equals(Object o) {
+            if (!(o instanceof PriorityHeapItem))
+                return false;
+            else
+                return ip.equals(((PriorityHeapItem)o).ip);
+        }
     }
 
     private class PriorityHeapItemComparator implements Comparator<PriorityHeapItem> {
@@ -50,7 +63,7 @@ public class URLFrontierAdmin {
 
     public WebPage getNextPage() {
         PriorityHeapItem item = priorityHeap.poll();
-        if (item.nextContact.compareTo(Instant.now()) < 0) {
+        if (item.nextContact.compareTo(Instant.now()) > 0) {
             long milliseconds = Instant.now().until(item.nextContact, ChronoUnit.MILLIS);
             try {
                 Thread.sleep(milliseconds);
@@ -61,20 +74,47 @@ public class URLFrontierAdmin {
         }
 
         ArrayDeque<WebPage> backQueue = hostTable.get(item.ip);
-        WebPage nextPage = backQueue.pop();
+        WebPage nextPage = backQueue.remove();
 
-        refillBackQueues(backQueue);
+        if (backQueue.isEmpty()) {
+            hostTable.remove(item.ip);
+            refillBackQueues(backQueue);
+        }
+
+        item.nextContact = Instant.now().plus(2, ChronoUnit.MINUTES);
+        priorityHeap.add(item);
 
         return nextPage;
     }
 
     private void refillBackQueues(ArrayDeque<WebPage> backQueue) {
+        InetAddress ip = InetAddress.getLoopbackAddress(); //Para que Java no se queje.
+
         while (backQueue.isEmpty()) {
             ArrayDeque<WebPage> frontQueue = frontQueues[pickRandomFrontQueue()];
-            WebPage p = frontQueue.pop();
+            WebPage p = frontQueue.remove();
 
-            // TODO: No implementado.
+            try {
+                ip = InetAddress.getByName(p.getURL().getHost());
+            }
+            catch (UnknownHostException e){
+                // TODO: Mandar a cola de errores?
+                continue;
+            }
+
+            if (hostTable.containsKey(ip)) {
+                ArrayDeque<WebPage> b = hostTable.get(ip);
+                b.add(p);
+            }
+            else {
+                hostTable.put(ip, backQueue);
+                backQueue.add(p);
+            }
         }
+
+        PriorityHeapItem i = new PriorityHeapItem(Instant.now(), ip);
+        if (!priorityHeap.contains(i))
+            priorityHeap.add(i);
     }
 
     private int pickRandomFrontQueue() {
