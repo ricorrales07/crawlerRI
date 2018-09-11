@@ -1,4 +1,6 @@
+import java.io.*;
 import java.net.InetAddress;
+import java.net.MalformedURLException;
 import java.net.UnknownHostException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -42,7 +44,7 @@ public class URLFrontierAdmin {
     private PriorityQueue<PriorityHeapItem> priorityHeap;
     private Random randomGenerator;
 
-    public URLFrontierAdmin(int F, int B, String initialUrlsFile) {
+    public URLFrontierAdmin(int F, int B, String initialUrlsFile) throws FileNotFoundException{
         this.F = F;
         this.B = B;
         frontQueues = new ArrayDeque[F];
@@ -59,7 +61,24 @@ public class URLFrontierAdmin {
         loadQueues(initialUrlsFile);
     }
 
-    private void loadQueues(String initialUrlsFile) {}
+    private void loadQueues(String initialUrlsFile) throws FileNotFoundException {
+        BufferedReader reader = new BufferedReader(new FileReader(initialUrlsFile));
+
+        try {
+            String s;
+            while ((s = reader.readLine()) != null) {
+                try {
+                    frontQueues[0].add(new WebPage(s));
+                }
+                catch (MalformedURLException e) {
+                    // TODO: Mandar URL a cola de errores.
+                }
+            }
+        }
+        catch (IOException e) { // de readLine()
+            // TODO: ver qué hacer en este caso.
+        }
+    }
 
     public WebPage getNextPage() {
         PriorityHeapItem item = priorityHeap.poll();
@@ -91,8 +110,11 @@ public class URLFrontierAdmin {
         InetAddress ip = InetAddress.getLoopbackAddress(); //Para que Java no se queje.
 
         while (backQueue.isEmpty()) {
-            ArrayDeque<WebPage> frontQueue = frontQueues[pickRandomFrontQueue()];
-            WebPage p = frontQueue.remove();
+            WebPage p = null;
+            while (p == null) { // Si la araña es continua, debería obtener algún elemento algún día.
+                ArrayDeque<WebPage> frontQueue = frontQueues[pickRandomFrontQueue()];
+                p = frontQueue.poll();
+            }
 
             try {
                 ip = InetAddress.getByName(p.getURL().getHost());

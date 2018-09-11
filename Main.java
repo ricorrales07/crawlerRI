@@ -1,3 +1,4 @@
+import java.io.FileNotFoundException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -19,7 +20,14 @@ public class Main {
         // TODO: Pedir F y B?
         // TODO: Pedir archivo de URLs iniciales.
 
-        URLFrontierAdmin urlFrontierAdmin = new URLFrontierAdmin(F, B, initialUrlsFile);
+        URLFrontierAdmin urlFrontierAdmin;
+        try {
+            urlFrontierAdmin = new URLFrontierAdmin(F, B, initialUrlsFile);
+        }
+        catch (FileNotFoundException e) {
+            // TODO: imprimir que no se encontró el archivo.
+            return;
+        }
 
         while (true) {
             synchronized (urlFrontierAdmin) {
