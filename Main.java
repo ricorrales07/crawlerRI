@@ -24,12 +24,14 @@ public class Main {
                 F = Integer.parseInt(args[0]);
             } catch (NumberFormatException e) {
                 System.out.println("F debe ser un entero.");
+                return;
             }
 
             try {
                 B = Integer.parseInt(args[1]);
             } catch (NumberFormatException e) {
                 System.out.println("B debe ser un entero.");
+                return;
             }
 
             initialUrlsFile = args[2];
