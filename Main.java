@@ -1,4 +1,5 @@
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -26,6 +27,10 @@ public class Main {
         }
         catch (FileNotFoundException e) {
             // TODO: imprimir que no se encontró el archivo.
+            return;
+        }
+        catch (IOException e) {
+            // TODO: error al leer el archivo
             return;
         }
 

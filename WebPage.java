@@ -25,6 +25,13 @@ public class WebPage {
         outgoingLinks = 0;
     }
 
+    public WebPage(URL url) {
+        this.url = url;
+        incomingLinks = new ArrayList<WebPage>();
+        ranking = 0;
+        outgoingLinks = 0;
+    }
+
     public URL getURL() {
         return url;
     }
@@ -60,5 +67,14 @@ public class WebPage {
             sum += p.getRanking() / p.getOutgoingLinks();
         }
         ranking = (1-dampingFactor) + dampingFactor * sum;
+    }
+
+    public boolean equals(Object o) {
+        if (o instanceof URL)
+            return this.url.equals(o);
+        else if (o instanceof WebPage)
+            return this.url.equals(((WebPage) o).url);
+        else
+            return false;
     }
 }

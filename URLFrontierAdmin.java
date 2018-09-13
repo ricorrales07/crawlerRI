@@ -1,13 +1,11 @@
 import java.io.*;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
+import java.net.URL;
 import java.net.UnknownHostException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayDeque;
-import java.util.Comparator;
-import java.util.PriorityQueue;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -43,8 +41,10 @@ public class URLFrontierAdmin {
     private ConcurrentHashMap<InetAddress, ArrayDeque<WebPage>> hostTable;
     private PriorityQueue<PriorityHeapItem> priorityHeap;
     private Random randomGenerator;
+    private ArrayList<String> errorList;
+    private ArrayList<WebPage> processingList;
 
-    public URLFrontierAdmin(int F, int B, String initialUrlsFile) throws FileNotFoundException{
+    public URLFrontierAdmin(int F, int B, String initialUrlsFile) throws IOException {
         this.F = F;
         this.B = B;
         frontQueues = new ArrayDeque[F];
@@ -57,26 +57,23 @@ public class URLFrontierAdmin {
         priorityHeap = new PriorityQueue<>(10000,
                 new PriorityHeapItemComparator());
         randomGenerator = new Random(Instant.now().getEpochSecond());
+        errorList = new ArrayList<String>();
+        processingList = new ArrayList<WebPage>();
 
         loadQueues(initialUrlsFile);
     }
 
-    private void loadQueues(String initialUrlsFile) throws FileNotFoundException {
+    private void loadQueues(String initialUrlsFile) throws IOException {
         BufferedReader reader = new BufferedReader(new FileReader(initialUrlsFile));
 
-        try {
-            String s;
-            while ((s = reader.readLine()) != null) {
-                try {
-                    frontQueues[0].add(new WebPage(s));
-                }
-                catch (MalformedURLException e) {
-                    // TODO: Mandar URL a cola de errores.
-                }
+        String s;
+        while ((s = reader.readLine()) != null) {
+            try {
+                frontQueues[0].add(new WebPage(s));
             }
-        }
-        catch (IOException e) { // de readLine()
-            // TODO: ver qué hacer en este caso.
+            catch (MalformedURLException e) {
+                errorList.add(s);
+            }
         }
     }
 
@@ -94,12 +91,14 @@ public class URLFrontierAdmin {
 
         ArrayDeque<WebPage> backQueue = hostTable.get(item.ip);
         WebPage nextPage = backQueue.remove();
+        processingList.add(nextPage);
 
         if (backQueue.isEmpty()) {
             hostTable.remove(item.ip);
             refillBackQueues(backQueue);
         }
 
+        // TODO: Revisar si esta cantidad de minutos funciona.
         item.nextContact = Instant.now().plus(2, ChronoUnit.MINUTES);
         priorityHeap.add(item);
 
@@ -120,7 +119,7 @@ public class URLFrontierAdmin {
                 ip = InetAddress.getByName(p.getURL().getHost());
             }
             catch (UnknownHostException e){
-                // TODO: Mandar a cola de errores?
+                errorList.add(p.getURL().toString());
                 continue;
             }
 
@@ -168,6 +167,39 @@ public class URLFrontierAdmin {
     }
 
     public void addPage(WebPage p) {
+        if (processingList.contains(p))
+            processingList.remove(p);
         frontQueues[getPriority(p)].add(p);
+    }
+
+    public boolean isInErrorList(String url) {
+        return errorList.contains(url);
+    }
+
+    public void addToErrorList(String url) {
+        errorList.add(url);
+    }
+
+    public WebPage find(URL url) {
+        WebPage fake = new WebPage(url);
+
+        if (processingList.contains(fake))
+            return processingList.get(processingList.indexOf(fake));
+        else {
+            for (ArrayDeque<WebPage> q : frontQueues) {
+                if (q.contains(fake))
+                    for (WebPage p : q)
+                        if (p.equals(fake))
+                            return p;
+            }
+            for (ArrayDeque<WebPage> q : backQueues) {
+                if (q.contains(fake))
+                    for (WebPage p : q)
+                        if (p.equals(fake))
+                            return p;
+            }
+        }
+
+        return null;
     }
 }
