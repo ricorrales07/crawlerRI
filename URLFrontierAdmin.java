@@ -80,6 +80,7 @@ public class URLFrontierAdmin {
         priorityHeap.add(new PriorityHeapItem(Instant.now(),
                 InetAddress.getLoopbackAddress()));
         hostTable.put(InetAddress.getLoopbackAddress(), backQueues[0]);
+        backQueues[0].add(frontQueues[0].poll());
     }
 
     public WebPage getNextPage() {
