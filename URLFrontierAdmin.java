@@ -105,7 +105,7 @@ public class URLFrontierAdmin {
         }
 
         // TODO: Revisar si esta cantidad de minutos funciona.
-        item.nextContact = Instant.now().plus(2, ChronoUnit.MINUTES);
+        item.nextContact = Instant.now().plus(2, ChronoUnit.SECONDS);
         priorityHeap.add(item);
 
         return nextPage;
@@ -184,6 +184,10 @@ public class URLFrontierAdmin {
 
     public void addToErrorList(String url) {
         errorList.add(url);
+    }
+
+    public boolean contains(URL url) {
+        return processingList.contains(new WebPage(url));
     }
 
     public WebPage find(URL url) {

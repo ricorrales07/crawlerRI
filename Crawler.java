@@ -1,11 +1,18 @@
-import java.io.File;
+import javax.swing.text.MutableAttributeSet;
+import javax.swing.text.html.HTML;
+import javax.swing.text.html.HTMLEditorKit;
+import javax.swing.text.html.parser.ParserDelegator;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by Ricardo on 5/9/2018.
@@ -57,16 +64,30 @@ public class Crawler implements Runnable {
     /**
      * Extrae el texto y el conjunto de enlaces de una página
      */
-    private void parsePage(WebPage p) {
-        ;
+    private List<String> parsePage() throws IOException {
+        ///TODO agregar sólo .html
+        FileReader reader = new FileReader(TEMP_FILE);
+        ArrayList<String> linkList = new ArrayList<>();
+        ParserDelegator parserDelegator = new ParserDelegator();
+        HTMLEditorKit.ParserCallback parserCallback = new HTMLEditorKit.ParserCallback() {
+            public void handleStartTag(HTML.Tag tag, MutableAttributeSet attribute, int pos) {
+                if (tag == HTML.Tag.A) {
+                    String address = (String) attribute.getAttribute(HTML.Attribute.HREF);
+                    linkList.add(address);
+                }
+            }
+        };
+        parserDelegator.parse(reader, parserCallback, true);
+        return linkList;
     }
 
     /**
      * Determina si un link extraído ya está en el URL frontier
-     * @param url
+     * @param link
      * @return
      */
-    private boolean eliminateDup(String url) {
-        return true;
+    private boolean eliminateDup(String link) throws MalformedURLException {
+        URL url = new URL(link);
+        return urlFrontierAdmin.contains(url);
     }
 }
