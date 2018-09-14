@@ -64,13 +64,17 @@ public class WebPage {
     private void updateRanking() {
         double sum = 0;
         for (WebPage p : incomingLinks) {
-            sum += p.getRanking() / p.getOutgoingLinks();
+            synchronized (p) {
+                sum += p.getRanking() / p.getOutgoingLinks();
+            }
         }
         ranking = (1-dampingFactor) + dampingFactor * sum;
     }
 
     public boolean equals(Object o) {
-        if (o instanceof URL)
+        if (o == null)
+            return false;
+        else if (o instanceof URL)
             return this.url.equals(o);
         else if (o instanceof WebPage)
             return this.url.equals(((WebPage) o).url);

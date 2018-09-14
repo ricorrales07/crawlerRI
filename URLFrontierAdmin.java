@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Created by Ricardo on 5/9/2018.
@@ -44,6 +45,8 @@ public class URLFrontierAdmin {
     private ArrayList<String> errorList;
     private ArrayList<WebPage> processingList;
 
+    public ReentrantLock lock;
+
     public URLFrontierAdmin(int F, int B, String initialUrlsFile)
             throws IOException, IllegalArgumentException {
         this.F = F;
@@ -60,6 +63,7 @@ public class URLFrontierAdmin {
         randomGenerator = new Random(Instant.now().getEpochSecond());
         errorList = new ArrayList<String>();
         processingList = new ArrayList<WebPage>();
+        lock = new ReentrantLock();
 
         loadQueues(initialUrlsFile);
     }
@@ -110,7 +114,7 @@ public class URLFrontierAdmin {
 
     public WebPage getNextPage() {
         System.out.println("Fetching next page...");
-        PriorityHeapItem item = priorityHeap.poll();
+        PriorityHeapItem item = priorityHeap.peek();
         System.out.println("Next IP address in priority heap: " + item.ip.toString()
             + "; Time of contact: " + item.nextContact.getEpochSecond());
         if (item.nextContact.compareTo(Instant.now()) > 0) {
@@ -125,9 +129,13 @@ public class URLFrontierAdmin {
             System.out.println("Thread woke up. Continuing with next page fetch.");
         }
 
+        WebPage nextPage;
+        lock.lock();
+        item = priorityHeap.poll();
+
         ArrayDeque<WebPage> backQueue = hostTable.get(item.ip);
         //System.out.println("Back Queue selected: " + backQueue); //sería bueno tener el número
-        WebPage nextPage = backQueue.remove();
+        nextPage = backQueue.remove();
         processingList.add(nextPage);
         System.out.println("Page dequed: " + nextPage.getURL().toString());
 
@@ -135,13 +143,16 @@ public class URLFrontierAdmin {
             System.out.println("Back queue is empty. Refilling back queues.");
             hostTable.remove(item.ip);
             refillBackQueues(backQueue);
+            System.out.println("Done refilling back queues.");
         }
 
         // TODO: Revisar si esta cantidad de minutos funciona.
         item.nextContact = Instant.now().plus(5, ChronoUnit.SECONDS);
         priorityHeap.add(item);
         System.out.println("Next time to contact IP " + item.ip.toString()
-            + ": " + item.nextContact.getEpochSecond());
+                + ": " + item.nextContact.getEpochSecond());
+
+        this.lock.unlock();
 
         return nextPage;
     }
@@ -153,12 +164,14 @@ public class URLFrontierAdmin {
             WebPage p = null;
             int n = 0;
             while (p == null) { // Si la araña es continua, debería obtener algún elemento algún día.
+                this.lock.unlock();
+                this.lock.lock();
                 n = pickRandomFrontQueue();
-                //System.out.println("Random front queue picked: " + n);
+                System.out.println("Random front queue picked: " + n);
                 ArrayDeque<WebPage> frontQueue = frontQueues[n];
                 p = frontQueue.poll();
-                //System.out.println((p == null) ? "Empty queue, choosing another one." :
-                //        "Page dequeued: " + p.getURL().toString());
+                System.out.println((p == null) ? "Empty queue, choosing another one." :
+                        "Page dequeued: " + p.getURL().toString());
             }
 
             System.out.println("Dequeued page " + p.getURL().toString() +
@@ -216,7 +229,10 @@ public class URLFrontierAdmin {
     }
 
     private int getPriority(WebPage p) {
-        double ranking = p.getRanking();
+        double ranking = 0;
+        synchronized (p) {
+            ranking = p.getRanking();
+        }
         System.out.println("Ranking of " + p.getURL().toString() + ": " + ranking);
         int priority = (int) ((1 - ranking) * F);
 
@@ -231,6 +247,7 @@ public class URLFrontierAdmin {
     }
 
     public boolean isInErrorList(String url) {
+        System.out.println("Checking if URL " + url + " is in error list.");
         return errorList.contains(url);
     }
 
@@ -240,6 +257,7 @@ public class URLFrontierAdmin {
     }
 
     public WebPage find(URL url) {
+        System.out.println("Finding URL " + url.toString() + " in URL Frontier.");
         WebPage fake = new WebPage(url);
 
         if (processingList.contains(fake))

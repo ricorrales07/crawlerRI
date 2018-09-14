@@ -58,6 +58,7 @@ public class Main {
         }
         catch (IOException e) {
             System.out.println("Error al leer archivo.");
+            System.out.println(e.toString());
             return;
         }
         catch (IllegalArgumentException e) {
@@ -66,10 +67,7 @@ public class Main {
         }
 
         while (true) {
-            WebPage page = null;
-            //synchronized (urlFrontierAdmin) {
-                page = urlFrontierAdmin.getNextPage();
-            //}
+            WebPage page = urlFrontierAdmin.getNextPage();
             if (page != null)
                 threadPool.submit(new Crawler(page, urlFrontierAdmin));
         }

@@ -67,32 +67,47 @@ public class Crawler implements Runnable {
             return;
         }
 
-        page.setOutgoingLinks(links.size());
+        synchronized (page) {
+            page.setOutgoingLinks(links.size());
+        }
 
         //Add links to URL frontier
         for(String link : links) {
             System.out.println("Found URL: " + link);
-            if (link != null) {
+            if (link != null && link != "") {
                 try {
                     URL linkURL = linkToURL(link);
                     //Agregar link a URL frontier
-                    WebPage linkPage = urlFrontierAdmin.find(linkURL);
+                    WebPage linkPage;
+                    urlFrontierAdmin.lock.lock();
+                    linkPage = urlFrontierAdmin.find(linkURL);
+                    urlFrontierAdmin.lock.unlock();
 
                     if (linkPage == null) { //link not in URL frontier
                         linkPage = new WebPage(linkURL);
-                        linkPage.addIncomingLink(page);
+                        synchronized (page) {
+                            linkPage.addIncomingLink(page);
+                        }
+                        urlFrontierAdmin.lock.lock();
                         urlFrontierAdmin.addPage(linkPage);
+                        urlFrontierAdmin.lock.unlock();
                     }
 
-                    linkPage.addIncomingLink(page);
+                    synchronized (linkPage) {
+                        linkPage.addIncomingLink(page);
+                    }
                 } catch (MalformedURLException e) {
+                    urlFrontierAdmin.lock.lock();
                     urlFrontierAdmin.addToErrorList(link);
+                    urlFrontierAdmin.lock.unlock();
                     //links.remove(link); // Esto estaba causando problemas.
                 }
             }
         }
         //Actualizar links en WebPage actual
-        page.setOutgoingLinks(links.size());
+        synchronized (page) {
+            page.setOutgoingLinks(links.size());
+        }
         System.out.println("End of thread.");
     }
 
@@ -156,7 +171,8 @@ public class Crawler implements Runnable {
      * @return true si el link está en el URL frontier
      */
     private URL linkToURL(String link) throws MalformedURLException {
-        if(urlFrontierAdmin.isInErrorList(link)) {
+        System.out.println("Converting link to URL object.");
+        if (urlFrontierAdmin.isInErrorList(link)) {
             return null;
         } else {
             return new URL(link);
