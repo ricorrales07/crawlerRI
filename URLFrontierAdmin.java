@@ -109,29 +109,39 @@ public class URLFrontierAdmin {
     }
 
     public WebPage getNextPage() {
+        System.out.println("Fetching next page...");
         PriorityHeapItem item = priorityHeap.poll();
+        System.out.println("Next IP address in priority heap: " + item.ip.toString()
+            + "; Time of contact: " + item.nextContact.getEpochSecond());
         if (item.nextContact.compareTo(Instant.now()) > 0) {
             long milliseconds = Instant.now().until(item.nextContact, ChronoUnit.MILLIS);
+            System.out.println(milliseconds + " left for contact. Sleeping thread.");
             try {
                 Thread.sleep(milliseconds);
             }
             catch (InterruptedException e) {
                 // No debería ocurrir.
             }
+            System.out.println("Thread woke up. Continuing with next page fetch.");
         }
 
         ArrayDeque<WebPage> backQueue = hostTable.get(item.ip);
+        //System.out.println("Back Queue selected: " + backQueue); //sería bueno tener el número
         WebPage nextPage = backQueue.remove();
         processingList.add(nextPage);
+        System.out.println("Page dequed: " + nextPage.getURL().toString());
 
         if (backQueue.isEmpty()) {
+            System.out.println("Back queue is empty. Refilling back queues.");
             hostTable.remove(item.ip);
             refillBackQueues(backQueue);
         }
 
         // TODO: Revisar si esta cantidad de minutos funciona.
-        item.nextContact = Instant.now().plus(2, ChronoUnit.MINUTES);
+        item.nextContact = Instant.now().plus(5, ChronoUnit.SECONDS);
         priorityHeap.add(item);
+        System.out.println("Next time to contact IP " + item.ip.toString()
+            + ": " + item.nextContact.getEpochSecond());
 
         return nextPage;
     }
@@ -142,23 +152,34 @@ public class URLFrontierAdmin {
         while (backQueue.isEmpty()) {
             WebPage p = null;
             while (p == null) { // Si la araña es continua, debería obtener algún elemento algún día.
-                ArrayDeque<WebPage> frontQueue = frontQueues[pickRandomFrontQueue()];
+                int n = pickRandomFrontQueue();
+                System.out.println("Random front queue picked: " + n);
+                ArrayDeque<WebPage> frontQueue = frontQueues[n];
                 p = frontQueue.poll();
+                System.out.println((p == null) ? "Empty queue, choosing another one." :
+                        "Page dequeued: " + p.getURL().toString());
             }
 
             try {
                 ip = InetAddress.getByName(p.getURL().getHost());
+                System.out.println("IP address corresponding to web page: " + ip.toString());
             }
             catch (UnknownHostException e){
+                System.out.println("Could not determine IP address corresponding to web page."
+                    + " Sending page to error list.");
                 errorList.add(p.getURL().toString());
                 continue;
             }
 
             if (hostTable.containsKey(ip)) {
+                System.out.println("IP already found in back queues. Adding web page"
+                    + " to back queue.");
                 ArrayDeque<WebPage> b = hostTable.get(ip);
                 b.add(p);
             }
             else {
+                System.out.println("IP not found in back queues. Adding to current"
+                    + "empty back queue.");
                 hostTable.put(ip, backQueue);
                 backQueue.add(p);
             }

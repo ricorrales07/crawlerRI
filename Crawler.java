@@ -26,6 +26,7 @@ public class Crawler implements Runnable {
     {
         this.page = page;
         this.urlFrontierAdmin = urlFrontierAdmin;
+        System.out.println("New thread: " + page.getURL().toString());
     }
 
     public void run() {

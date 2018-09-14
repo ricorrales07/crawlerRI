@@ -46,6 +46,9 @@ public class Main {
         //newCachedThreadPool crea, destruye y reusa hilos conforme sea necesario.
         ExecutorService threadPool = Executors.newCachedThreadPool();
 
+        System.out.println("Working Directory = " +
+                System.getProperty("user.dir"));
+
         try {
             urlFrontierAdmin = new URLFrontierAdmin(F, B, initialUrlsFile);
         }
@@ -63,11 +66,12 @@ public class Main {
         }
 
         while (true) {
-            synchronized (urlFrontierAdmin) {
-                WebPage page = urlFrontierAdmin.getNextPage();
-                if (page != null)
-                    threadPool.submit(new Crawler(page, urlFrontierAdmin));
-            }
+            WebPage page = null;
+            //synchronized (urlFrontierAdmin) {
+                page = urlFrontierAdmin.getNextPage();
+            //}
+            if (page != null)
+                threadPool.submit(new Crawler(page, urlFrontierAdmin));
         }
     }
 }
