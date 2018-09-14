@@ -57,6 +57,10 @@ public class Main {
             System.out.println("Error al leer archivo.");
             return;
         }
+        catch (IllegalArgumentException e) {
+            System.out.println(e.getMessage());
+            return;
+        }
 
         while (true) {
             synchronized (urlFrontierAdmin) {

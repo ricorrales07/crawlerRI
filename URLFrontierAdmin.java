@@ -44,7 +44,8 @@ public class URLFrontierAdmin {
     private ArrayList<String> errorList;
     private ArrayList<WebPage> processingList;
 
-    public URLFrontierAdmin(int F, int B, String initialUrlsFile) throws IOException {
+    public URLFrontierAdmin(int F, int B, String initialUrlsFile)
+            throws IOException, IllegalArgumentException {
         this.F = F;
         this.B = B;
         frontQueues = new ArrayDeque[F];
@@ -63,24 +64,48 @@ public class URLFrontierAdmin {
         loadQueues(initialUrlsFile);
     }
 
-    private void loadQueues(String initialUrlsFile) throws IOException {
+    private void loadQueues(String initialUrlsFile)
+            throws IOException, IllegalArgumentException {
         BufferedReader reader = new BufferedReader(new FileReader(initialUrlsFile));
 
         String s;
-        while ((s = reader.readLine()) != null) {
+        int queueNumber = 0;
+        while ((s = reader.readLine()) != null && queueNumber < B) {
+            WebPage page;
             try {
-                frontQueues[0].add(new WebPage(s));
+                page = new WebPage(s);
+                InetAddress pageIp = InetAddress.getByName(page.getURL().getHost());
+                if (hostTable.containsKey(pageIp)) {
+                    ArrayDeque<WebPage> q = hostTable.get(pageIp);
+                    q.add(page);
+                }
+                else {
+                    ArrayDeque<WebPage> q = backQueues[queueNumber];
+                    q.add(page);
+                    hostTable.put(pageIp, q);
+                    priorityHeap.add(new PriorityHeapItem(Instant.now(), pageIp));
+                    queueNumber++;
+                }
             }
             catch (MalformedURLException e) {
                 errorList.add(s);
             }
         }
-
-        // Hack para que pueda comenzar.
-        priorityHeap.add(new PriorityHeapItem(Instant.now(),
-                InetAddress.getLoopbackAddress()));
-        hostTable.put(InetAddress.getLoopbackAddress(), backQueues[0]);
-        backQueues[0].add(frontQueues[0].poll());
+        if (s == null) {
+            throw new IllegalArgumentException("No hay suficientes URLs para " +
+                "llenar las back queues. Pruebe con más URLs o un valor de B " +
+                "más pequeño.");
+        }
+        else {
+            do {
+                try {
+                    frontQueues[0].add(new WebPage(s));
+                }
+                catch (MalformedURLException e) {
+                    errorList.add(s);
+                }
+            } while ((s = reader.readLine()) != null);
+        }
     }
 
     public WebPage getNextPage() {
