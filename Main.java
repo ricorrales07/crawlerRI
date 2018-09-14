@@ -9,28 +9,52 @@ import java.util.concurrent.Executors;
  */
 public class Main {
 
+    URLFrontierAdmin urlFrontierAdmin;
+
     public static void main(String[] args) {
+        int F = 0;
+        int B = 0;
+        String initialUrlsFile = "";
+
+        if(args.length != 3) {
+            System.out.println("Error: número equivocado de argumentos.\nParámetros: F B initialUrlsFile");
+            return;
+        } else {
+            try {
+                F = Integer.parseInt(args[0]);
+            } catch (NumberFormatException e) {
+                System.out.println("F debe ser un entero.");
+                return;
+            }
+
+            try {
+                B = Integer.parseInt(args[1]);
+            } catch (NumberFormatException e) {
+                System.out.println("B debe ser un entero.");
+                return;
+            }
+
+            initialUrlsFile = args[2];
+        }
+
+        new Main().run(F, B, initialUrlsFile);
+    }
+
+    void run(int F, int B, String initialUrlsFile) {
         //Instancia thread pool, variables compartidas y pone a los hilos a correr.
 
         //newCachedThreadPool crea, destruye y reusa hilos conforme sea necesario.
         ExecutorService threadPool = Executors.newCachedThreadPool();
 
-        int F = 0, B = 0;
-        String initialUrlsFile = "";
-
-        // TODO: Pedir F y B?
-        // TODO: Pedir archivo de URLs iniciales.
-
-        URLFrontierAdmin urlFrontierAdmin;
         try {
             urlFrontierAdmin = new URLFrontierAdmin(F, B, initialUrlsFile);
         }
         catch (FileNotFoundException e) {
-            // TODO: imprimir que no se encontró el archivo.
+            System.out.println("Error: archivo no encontrado.");
             return;
         }
         catch (IOException e) {
-            // TODO: error al leer el archivo
+            System.out.println("Error al leer archivo.");
             return;
         }
 
