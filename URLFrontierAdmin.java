@@ -75,6 +75,11 @@ public class URLFrontierAdmin {
                 errorList.add(s);
             }
         }
+
+        // Hack para que pueda comenzar.
+        priorityHeap.add(new PriorityHeapItem(Instant.now(),
+                InetAddress.getLoopbackAddress()));
+        hostTable.put(InetAddress.getLoopbackAddress(), backQueues[0]);
     }
 
     public WebPage getNextPage() {
