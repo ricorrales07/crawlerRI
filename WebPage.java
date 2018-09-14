@@ -21,14 +21,14 @@ public class WebPage {
     public WebPage(String url) throws MalformedURLException {
         this.url = new URL(url);
         incomingLinks = new ArrayList<WebPage>();
-        ranking = 0;
+        ranking = 1;
         outgoingLinks = 0;
     }
 
     public WebPage(URL url) {
         this.url = url;
         incomingLinks = new ArrayList<WebPage>();
-        ranking = 0;
+        ranking = 1;
         outgoingLinks = 0;
     }
 

@@ -9,6 +9,7 @@ import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashSet;
@@ -21,6 +22,8 @@ public class Crawler implements Runnable {
     private WebPage page;
     private URLFrontierAdmin urlFrontierAdmin;
     private final String TEMP_FILE = "temp";
+    private static final Boolean lock = true;
+    private static Integer pageNumber = 0;
 
     public Crawler(WebPage page, URLFrontierAdmin urlFrontierAdmin)
     {
@@ -30,50 +33,67 @@ public class Crawler implements Runnable {
     }
 
     public void run() {
+        System.out.println("Thread running (" + page.getURL().toString() + ").");
         InetAddress ip = InetAddress.getLoopbackAddress();
         URL url = page.getURL();
         Set<String> links;
         //Resolve DNS
         try {
             ip = resolveDNS(url);
+            System.out.println("Resolved DNS for " + page.getURL().toString()
+                + ": " + ip);
         } catch (UnknownHostException e) {
             // Host inválido
+            System.out.println("Could not resolve DNS for " + page.getURL().toString());
             return;
         }
         //Fetch Page
+        String path = null;
         try {
-            fetchPage(url);
+            System.out.println("Fetching page " + page.getURL().toString());
+            path = fetchPage(url);
+            System.out.println("Page fetched: " + page.getURL().toString());
         } catch (IOException e) {
             // No pudo copiar archivo
+            System.out.println(e.toString());
             return;
         }
         //Parse Page
         try {
-            links = parsePage();
+            links = parsePage(path);
         } catch (IOException e) {
             //No pudo leer archivo
+            System.out.println("Could not read file.");
             return;
         }
+
+        page.setOutgoingLinks(links.size());
+
         //Add links to URL frontier
         for(String link : links) {
-            try {
-                URL linkURL = linkToURL(link);
-                //Agregar link a URL frontier
-                WebPage linkPage = urlFrontierAdmin.find(linkURL);
+            System.out.println("Found URL: " + link);
+            if (link != null) {
+                try {
+                    URL linkURL = linkToURL(link);
+                    //Agregar link a URL frontier
+                    WebPage linkPage = urlFrontierAdmin.find(linkURL);
 
-                if(linkPage == null) { //link not in URL frontier
-                    linkPage = new WebPage(linkURL);
-                    urlFrontierAdmin.addPage(linkPage);
+                    if (linkPage == null) { //link not in URL frontier
+                        linkPage = new WebPage(linkURL);
+                        linkPage.addIncomingLink(page);
+                        urlFrontierAdmin.addPage(linkPage);
+                    }
+
+                    linkPage.addIncomingLink(page);
+                } catch (MalformedURLException e) {
+                    urlFrontierAdmin.addToErrorList(link);
+                    //links.remove(link); // Esto estaba causando problemas.
                 }
-
-                linkPage.addIncomingLink(page);
-            } catch (MalformedURLException e) {
-                urlFrontierAdmin.addToErrorList(link);
-                links.remove(link);
             }
         }
         //Actualizar links en WebPage actual
         page.setOutgoingLinks(links.size());
+        System.out.println("End of thread.");
     }
 
     /**
@@ -89,18 +109,33 @@ public class Crawler implements Runnable {
      * Recupera la página en un URL
      * @param url URL de la página
      */
-    private void fetchPage(URL url) throws IOException {
+    private String fetchPage(URL url) throws IOException {
+        String path = null;
         InputStream in = url.openStream();
-        Files.copy(in, Paths.get(TEMP_FILE));
+        boolean fetched = false;
+        while(!fetched) {
+            synchronized (lock) {
+                try {
+                    path = "./pages/" + pageNumber + ".html";
+                    Files.copy(in, Paths.get(path));
+                    fetched = true;
+                }
+                catch (FileAlreadyExistsException e){}
+                finally {
+                    pageNumber++;
+                }
+            }
+        }
+        return path;
     }
 
     /**
      * Extrae el texto y el conjunto de enlaces de una página
      * @return Lista de links en la página, si es html
      */
-    private Set<String> parsePage() throws IOException {
+    private Set<String> parsePage(String path) throws IOException {
         ///TODO agregar sólo .html
-        FileReader reader = new FileReader(TEMP_FILE);
+        FileReader reader = new FileReader(path);
         HashSet<String> linkSet = new HashSet<>();
         ParserDelegator parserDelegator = new ParserDelegator();
         HTMLEditorKit.ParserCallback parserCallback = new HTMLEditorKit.ParserCallback() {

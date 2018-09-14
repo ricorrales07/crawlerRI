@@ -91,12 +91,12 @@ public class URLFrontierAdmin {
                 errorList.add(s);
             }
         }
-        if (s == null) {
+        if (s == null && queueNumber < B) {
             throw new IllegalArgumentException("No hay suficientes URLs para " +
                 "llenar las back queues. Pruebe con más URLs o un valor de B " +
                 "más pequeño.");
         }
-        else {
+        else if (s != null){
             do {
                 try {
                     frontQueues[0].add(new WebPage(s));
@@ -151,14 +151,18 @@ public class URLFrontierAdmin {
 
         while (backQueue.isEmpty()) {
             WebPage p = null;
+            int n = 0;
             while (p == null) { // Si la araña es continua, debería obtener algún elemento algún día.
-                int n = pickRandomFrontQueue();
-                System.out.println("Random front queue picked: " + n);
+                n = pickRandomFrontQueue();
+                //System.out.println("Random front queue picked: " + n);
                 ArrayDeque<WebPage> frontQueue = frontQueues[n];
                 p = frontQueue.poll();
-                System.out.println((p == null) ? "Empty queue, choosing another one." :
-                        "Page dequeued: " + p.getURL().toString());
+                //System.out.println((p == null) ? "Empty queue, choosing another one." :
+                //        "Page dequeued: " + p.getURL().toString());
             }
+
+            System.out.println("Dequeued page " + p.getURL().toString() +
+                " from front queue " + n);
 
             try {
                 ip = InetAddress.getByName(p.getURL().getHost());
@@ -179,7 +183,7 @@ public class URLFrontierAdmin {
             }
             else {
                 System.out.println("IP not found in back queues. Adding to current"
-                    + "empty back queue.");
+                    + " empty back queue.");
                 hostTable.put(ip, backQueue);
                 backQueue.add(p);
             }
@@ -213,12 +217,14 @@ public class URLFrontierAdmin {
 
     private int getPriority(WebPage p) {
         double ranking = p.getRanking();
+        System.out.println("Ranking of " + p.getURL().toString() + ": " + ranking);
         int priority = (int) ((1 - ranking) * F);
 
         return priority;
     }
 
     public void addPage(WebPage p) {
+        System.out.println("Adding page " + p.getURL().toString() + " to URL Frontier.");
         if (processingList.contains(p))
             processingList.remove(p);
         frontQueues[getPriority(p)].add(p);
@@ -229,6 +235,7 @@ public class URLFrontierAdmin {
     }
 
     public void addToErrorList(String url) {
+        System.out.println("Adding URL " + url + " to error list.");
         errorList.add(url);
     }
 
