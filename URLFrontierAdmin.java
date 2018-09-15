@@ -175,8 +175,8 @@ public class URLFrontierAdmin {
             int n = 0;
             // TODO: Este ciclo está causando problemas, hay que pensarlo bien.
             while (p == null) { // Si la araña es continua, debería obtener algún elemento algún día.
-                //this.lock.unlock();
-                //this.lock.lock();
+                this.lock.unlock();
+                this.lock.lock();
                 n = pickRandomFrontQueue();
                 System.out.println("Random front queue picked: " + n);
                 ArrayDeque<WebPage> frontQueue = frontQueues[n];
