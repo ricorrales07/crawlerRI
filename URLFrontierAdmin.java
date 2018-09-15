@@ -87,6 +87,7 @@ public class URLFrontierAdmin {
                     ArrayDeque<WebPage> q = backQueues[queueNumber];
                     q.add(page);
                     hostTable.put(pageIp, q);
+                    System.out.println("Putting " + pageIp.toString() + " in hostTable.");
                     priorityHeap.add(new PriorityHeapItem(Instant.now(), pageIp));
                     queueNumber++;
                 }
@@ -114,7 +115,14 @@ public class URLFrontierAdmin {
 
     public WebPage getNextPage() {
         System.out.println("Fetching next page...");
-        PriorityHeapItem item = priorityHeap.peek();
+        PriorityHeapItem item = null;
+        while(item == null) {
+            item = priorityHeap.peek();
+            if(!hostTable.containsKey(item.ip)) {
+                priorityHeap.poll(); // Se descarta, si ninguna back queue corresponde a ese ip.
+                item = null;
+            }
+        }
         System.out.println("Next IP address in priority heap: " + item.ip.toString()
             + "; Time of contact: " + item.nextContact.getEpochSecond());
         if (item.nextContact.compareTo(Instant.now()) > 0) {
@@ -133,6 +141,8 @@ public class URLFrontierAdmin {
         lock.lock();
         item = priorityHeap.poll();
 
+        if(!hostTable.containsKey(item.ip))
+            System.out.println("ERROR");
         ArrayDeque<WebPage> backQueue = hostTable.get(item.ip);
         //System.out.println("Back Queue selected: " + backQueue); //sería bueno tener el número
         nextPage = backQueue.remove();
@@ -163,9 +173,10 @@ public class URLFrontierAdmin {
         while (backQueue.isEmpty()) {
             WebPage p = null;
             int n = 0;
+            // TODO: Este ciclo está causando problemas, hay que pensarlo bien.
             while (p == null) { // Si la araña es continua, debería obtener algún elemento algún día.
-                this.lock.unlock();
-                this.lock.lock();
+                //this.lock.unlock();
+                //this.lock.lock();
                 n = pickRandomFrontQueue();
                 System.out.println("Random front queue picked: " + n);
                 ArrayDeque<WebPage> frontQueue = frontQueues[n];
@@ -229,10 +240,7 @@ public class URLFrontierAdmin {
     }
 
     private int getPriority(WebPage p) {
-        double ranking = 0;
-        synchronized (p) {
-            ranking = p.getRanking();
-        }
+        double ranking = p.getRanking();
         System.out.println("Ranking of " + p.getURL().toString() + ": " + ranking);
         int priority = (int) ((1 - ranking) * F);
 

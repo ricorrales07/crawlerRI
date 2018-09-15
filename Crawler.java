@@ -79,23 +79,23 @@ public class Crawler implements Runnable {
                     URL linkURL = linkToURL(link);
                     //Agregar link a URL frontier
                     WebPage linkPage;
-                    urlFrontierAdmin.lock.lock();
+                    //urlFrontierAdmin.lock.lock();
                     linkPage = urlFrontierAdmin.find(linkURL);
-                    urlFrontierAdmin.lock.unlock();
+                    //urlFrontierAdmin.lock.unlock();
 
                     if (linkPage == null) { //link not in URL frontier
                         linkPage = new WebPage(linkURL);
                         synchronized (page) {
                             linkPage.addIncomingLink(page);
                         }
-                        urlFrontierAdmin.lock.lock();
+                        //urlFrontierAdmin.lock.lock();
                         urlFrontierAdmin.addPage(linkPage);
-                        urlFrontierAdmin.lock.unlock();
+                        //urlFrontierAdmin.lock.unlock();
                     }
 
-                    synchronized (linkPage) {
+                    /*synchronized (linkPage) {
                         linkPage.addIncomingLink(page);
-                    }
+                    }*/
                 } catch (MalformedURLException e) {
                     urlFrontierAdmin.lock.lock();
                     urlFrontierAdmin.addToErrorList(link);
@@ -105,9 +105,9 @@ public class Crawler implements Runnable {
             }
         }
         //Actualizar links en WebPage actual
-        synchronized (page) {
+        /*synchronized (page) {
             page.setOutgoingLinks(links.size());
-        }
+        }*/
         System.out.println("End of thread.");
     }
 

@@ -44,7 +44,7 @@ public class Main {
         //Instancia thread pool, variables compartidas y pone a los hilos a correr.
 
         //newCachedThreadPool crea, destruye y reusa hilos conforme sea necesario.
-        ExecutorService threadPool = Executors.newCachedThreadPool();
+        ExecutorService threadPool = Executors.newFixedThreadPool(10);
 
         System.out.println("Working Directory = " +
                 System.getProperty("user.dir"));

@@ -64,9 +64,7 @@ public class WebPage {
     private void updateRanking() {
         double sum = 0;
         for (WebPage p : incomingLinks) {
-            synchronized (p) {
                 sum += p.getRanking() / p.getOutgoingLinks();
-            }
         }
         ranking = (1-dampingFactor) + dampingFactor * sum;
     }
