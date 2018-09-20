@@ -2,9 +2,7 @@ import javax.swing.text.MutableAttributeSet;
 import javax.swing.text.html.HTML;
 import javax.swing.text.html.HTMLEditorKit;
 import javax.swing.text.html.parser.ParserDelegator;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -24,6 +22,7 @@ public class Crawler implements Runnable {
     private final String TEMP_FILE = "temp";
     private static final Boolean lock = true;
     private static Integer pageNumber = 0;
+    private static Integer robotsNumber = 0;
 
     public Crawler(WebPage page, URLFrontierAdmin urlFrontierAdmin)
     {
@@ -34,12 +33,11 @@ public class Crawler implements Runnable {
 
     public void run() {
         System.out.println("Thread running (" + page.getURL().toString() + ").");
-        InetAddress ip = InetAddress.getLoopbackAddress();
         URL url = page.getURL();
         Set<String> links;
         //Resolve DNS
         try {
-            ip = resolveDNS(url);
+            InetAddress ip = resolveDNS(url);
             System.out.println("Resolved DNS for " + page.getURL().toString()
                 + ": " + ip);
         } catch (UnknownHostException e) {
@@ -47,6 +45,12 @@ public class Crawler implements Runnable {
             System.out.println("Could not resolve DNS for " + page.getURL().toString());
             return;
         }
+        //Check robots.txt
+        try {
+            if (!checkRobots(url)) {
+                return;
+            }
+        } catch (IOException e) { }
         //Fetch Page
         String path = null;
         try {
@@ -118,6 +122,62 @@ public class Crawler implements Runnable {
      */
     private InetAddress resolveDNS(URL url) throws UnknownHostException{
         return InetAddress.getByName(url.getHost());
+    }
+
+    /**
+     * Returns true if robots.txt permits page to be fetched
+     * @param url full url of page to be fetched
+     * @return true if permitted
+     * @throws IOException
+     */
+    private boolean checkRobots(URL url) throws IOException {
+        String path = null;
+        URL robotsURL;
+        try {
+            robotsURL = new URL(url.getHost() + "robots.txt");
+        } catch (MalformedURLException e) {
+            return true;
+        }
+        //copy robots.txt
+        InputStream in = url.openStream();
+        boolean fetched = false;
+        while(!fetched) {
+            synchronized (lock) {
+                try {
+                    path = "./robots/" + robotsNumber + ".txt";
+                    Files.copy(in, Paths.get(path));
+                    fetched = true;
+                }
+                catch (FileAlreadyExistsException e){}
+                finally {
+                    robotsNumber++;
+                }
+            }
+        }
+        //read robots.txt
+        String urlPathStr = url.getPath();
+        String line = null;
+        try {
+            BufferedReader bufferedReader = new BufferedReader(new FileReader(path));
+            do {
+                line = bufferedReader.readLine();
+            } while (line != null && !line.equals("User-agent: *"));
+            if (line == null) {
+                bufferedReader.close();
+                return true;
+            }
+            //Read User-agent: *
+            do {
+                line = bufferedReader.readLine();
+            } while (line != null && !line.equals("Disallow: " + urlPathStr));
+            bufferedReader.close();
+            return line == null;
+        } catch (FileNotFoundException e) {
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     /**
