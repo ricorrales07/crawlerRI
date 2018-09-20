@@ -64,7 +64,7 @@ public class Crawler implements Runnable {
         }
         //Parse Page
         try {
-            links = parsePage(path);
+            links = parsePage(url, path);
         } catch (IOException e) {
             //No pudo leer archivo
             System.out.println("Could not read file.");
@@ -208,7 +208,7 @@ public class Crawler implements Runnable {
      * Extrae el texto y el conjunto de enlaces de una página
      * @return Lista de links en la página, si es html
      */
-    private Set<String> parsePage(String path) throws IOException {
+    private Set<String> parsePage(URL url, String path) throws IOException {
         ///TODO agregar sólo .html
         FileReader reader = new FileReader(path);
         HashSet<String> linkSet = new HashSet<>();
@@ -217,6 +217,8 @@ public class Crawler implements Runnable {
             public void handleStartTag(HTML.Tag tag, MutableAttributeSet attribute, int pos) {
                 if (tag == HTML.Tag.A) {
                     String address = (String) attribute.getAttribute(HTML.Attribute.HREF);
+                    if(address.startsWith("/"))
+                        address = url.getHost() + address;
                     linkSet.add(address);
                 }
             }
