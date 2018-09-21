@@ -134,12 +134,12 @@ public class Crawler implements Runnable {
         String path = null;
         URL robotsURL;
         try {
-            robotsURL = new URL(url.getHost() + "robots.txt");
+            robotsURL = new URL(url.getProtocol() + "://" + url.getHost() + "/robots.txt");
         } catch (MalformedURLException e) {
             return true;
         }
         //copy robots.txt
-        InputStream in = url.openStream();
+        InputStream in = robotsURL.openStream();
         boolean fetched = false;
         while(!fetched) {
             synchronized (lock) {
@@ -167,11 +167,19 @@ public class Crawler implements Runnable {
                 return true;
             }
             //Read User-agent: *
+            String subpath;
             do {
                 line = bufferedReader.readLine();
-            } while (line != null && !line.equals("Disallow: " + urlPathStr));
+                if (line != null && line.startsWith("Disallow: ")) {
+                    subpath = line.substring(line.indexOf(":") + 2);
+                    if(urlPathStr.startsWith(subpath)) { //URL path is disallowed by robots.txt
+                        bufferedReader.close();
+                        return false;
+                    }
+                }
+            } while (line != null && !line.startsWith("User-agent: "));
             bufferedReader.close();
-            return line == null;
+            return true;
         } catch (FileNotFoundException e) {
             return true;
         } catch (IOException e) {
@@ -217,13 +225,14 @@ public class Crawler implements Runnable {
             public void handleStartTag(HTML.Tag tag, MutableAttributeSet attribute, int pos) {
                 if (tag == HTML.Tag.A) {
                     String address = (String) attribute.getAttribute(HTML.Attribute.HREF);
-                    if(address.startsWith("/"))
-                        address = url.getHost() + address;
-                    linkSet.add(address);
+                    if(address != null && address.startsWith("/"))
+                        address = url.getProtocol() + "://" + url.getHost() + address;
+                    if(address != null && !address.startsWith("#"))
+                        linkSet.add(address);
                 }
             }
         };
-        parserDelegator.parse(reader, parserCallback, true);
+        parserDelegator.parse(reader, parserCallback, false);
         return linkSet;
     }
 
